@@ -1,15 +1,19 @@
 #include <SDL2/SDL.h>
 #include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <ctype.h>
+#include <unistd.h>
 #include <math.h>
 #include <time.h>
+#include "main.h"
+#include "plot.h"
 
 #define WIDTH 800
 #define HEIGHT 800
 
-typedef struct list_node list_node_t;
-typedef struct sdl_data sdl_data_t;
-typedef struct person person_t;
-typedef struct binary_tree binary_tree_t;
+int search_animation =0;
+
 
 struct sdl_data {
     SDL_Renderer *renderer;
@@ -24,10 +28,6 @@ struct person {
     Uint8 infected;
 };
 
-struct list_node {
-    list_node_t *next;
-    person_t *value;
-};
 
 enum MOVE{RIGHT, LEFT, UP, DOWN};
 
@@ -42,23 +42,12 @@ int interleave_choices(int x, int y, int choice);
 
 
 /*
-
 Binary tree structure:
 Alternating X and Y values
 Value is central point on this depth's axis
-
+**  As of 29.01.2022 there is a bug when selecting  x>= y, giving opposite
+    encoding on each half of the tree. EdvardP  assigned.
 */
-
-
-struct binary_tree {
-    binary_tree_t *parent;
-    binary_tree_t *left;
-    binary_tree_t *right;
-    int value_x;
-    int value_y;
-    int x, y, w, h;
-    list_node_t *content;
-};
 
 sdl_data_t *win;
 
@@ -112,16 +101,12 @@ void move_nodes(binary_tree_t *my_root) {
             person_t *my_person = list_entry->value;
             binary_tree_t *move_to = NULL;
             if(my_person->x > my_root->x + my_root->w) {
-                printf("MOVING RIGHT!\n");
                 move_to = find_directional_node(my_root, my_root->value_x, my_root->value_y, RIGHT);
             } else if (my_person->x < my_root->x) {
-                printf("MOVING LEFT!\n");
                 move_to = find_directional_node(my_root, my_root->value_x, my_root->value_y, LEFT);
             } else if (my_person->y > my_root->y + my_root->h) {
-                printf("MOVING UP!\n");
                 move_to = find_directional_node(my_root, my_root->value_x, my_root->value_y, UP);
             } else if (my_person->y < my_root->y) {
-                printf("MOVING DOWN!\n");
                 move_to = find_directional_node(my_root, my_root->value_x, my_root->value_y, DOWN);
             }
             list_entry = list_entry->next;
@@ -186,18 +171,12 @@ binary_tree_t *find_directional_node(binary_tree_t *my_root, int x, int y, enum 
     default:
         return NULL;
     }
-    printf("Invert: %i\n", invert);
 
     int reversed_choices = 1;
     int swapped = 0;
     while(choices > 1) {
-        print_binary(choices);
-        printf(" - ");
-        print_binary(reversed_choices);
-        printf("\n");
         reversed_choices = reversed_choices << 1;
         if(swapped == 0 && ((choices & 1) == invert)) {
-            printf("SWAPPIN\n");
             choices &= -2;
             choices |= !invert;
             swapped = 1;
@@ -209,30 +188,15 @@ binary_tree_t *find_directional_node(binary_tree_t *my_root, int x, int y, enum 
         }
         choices = choices >> 1;
     }
-    binary_tree_t *upper_root = my_root->parent;
-    printf("(");
-    print_binary(my_root->value_x);
-    printf(",");
-    print_binary(my_root->value_y);
-    printf(") - ");
-    print_binary(reversed_choices);
-    printf("- %i %i\n", direction, invert);
-    
 
-    
+    binary_tree_t *upper_root = my_root->parent;
     while(upper_root->parent) {
         upper_root = upper_root->parent;
     }
 
     int combined_choices = 0;
 
-    printf("I try: ");
-    print_binary(reverse_bits(y));
-    printf("\n");
-    printf("I got: ");
-    print_binary(interleave_choices(reversed_choices, reverse_bits(y), 1));
-    printf("\n");
-
+    binary_tree_t *node = find_node(interleave_choices(reversed_choices,reverse_bits(y),1),upper_root);
     return find_node(interleave_choices(reversed_choices, reverse_bits(y), 1), upper_root);
 }
 
@@ -247,57 +211,46 @@ int reverse_bits(int target) {
 }
 
 int interleave_choices(int x, int y, int choice) {
-    printf("X: ");
-    print_binary(x);
-    printf("\nY: ");
-    print_binary(y);
-    printf("\n");
     if(choice == 0 && !((x >> 1 < 1) && (y >> 1 < 1))) {
-        printf("Picking %i from X\n", (x & 1));
         return (interleave_choices(x >> 1, y, 1) << 1) | (x & 1);
     } else if (!((x >> 1 < 1) && (y >> 1 < 1))) {
-        printf("Picking %i from Y\n", (y & 1));
         return (interleave_choices(x, y >> 1, 0) << 1) | (y & 1);
     } else if ((x >> 1 < 1) && (y >> 1 < 1)) {
-        printf("Picking 1\n");
         return 1;
     }
 }
 
 binary_tree_t *find_node(int choices, binary_tree_t *my_root) {
-    SDL_SetRenderDrawColor(win->renderer, 0, 0, 0, 25);
-    SDL_RenderFillRect(win->renderer, NULL);
-    SDL_SetRenderDrawColor(win->renderer, 0xff, 0xff, 0xff, 0x10);
-    SDL_Rect draw_rect;
-    draw_rect.x = my_root->x;
-    draw_rect.y = my_root->y;
-    draw_rect.w = my_root->w;
-    draw_rect.h = my_root->h;
-    SDL_RenderDrawRect(win->renderer, &draw_rect);
-    SDL_RenderPresent(win->renderer);
-    SDL_Delay(200);
-
-    if(choices == 1) {
-        printf("\nmy_root: (");
-        print_binary(my_root->value_x);
-        printf(",");
-        print_binary(my_root->value_y);
-        printf(")\n");
+    
+    if(search_animation){
+        SDL_SetRenderDrawColor(win->renderer, 0, 0, 0, 25);
+        SDL_RenderFillRect(win->renderer, NULL);
+        SDL_SetRenderDrawColor(win->renderer, 0xff, 0xff, 0xff, 0x10);
+        SDL_Rect draw_rect;
+        draw_rect.x = my_root->x;
+        draw_rect.y = my_root->y;
+        draw_rect.w = my_root->w;
+        draw_rect.h = my_root->h;
+        SDL_RenderDrawRect(win->renderer, &draw_rect);
+        SDL_RenderPresent(win->renderer);
+        SDL_Delay(200);
+    }
+    if(choices <= 1) {
         return my_root;
     }
     if(choices & 1) {
-        printf("R");
+        // printf("R");
         find_node(choices >> 1, my_root->right);
     } else {
-        printf("L");
+        // printf("L");
         find_node(choices >> 1, my_root->left);
     }
 }
 
 person_t *create_person() {
     person_t *new_person = malloc(sizeof(person_t));
-    new_person->x = rand() % WIDTH;
-    new_person->y = rand() % HEIGHT;
+    new_person->x = 10;
+    new_person->y = 500;
     new_person->speed_x = ((rand() % 10) - 5) / 10.0;
     new_person->speed_y = ((rand() % 10) - 5) / 10.0;
     new_person->infected = 0;
@@ -453,18 +406,18 @@ void print_binary(int bin) {
 }
 
 void print_tree(binary_tree_t *tree_to_print) {
+    if(!tree_to_print){
+        printf("LEAF!!\n");
+        return;
+    }
     printf("Node (");
     print_binary(tree_to_print->value_x);
     printf(", ");
     print_binary(tree_to_print->value_y);
     printf(") - x: %i, y: %i, width: %i, height %i\n", tree_to_print->x, tree_to_print->y, tree_to_print->w, tree_to_print->h);
 
-    if(tree_to_print->right) {
-        print_tree(tree_to_print->left);
-        print_tree(tree_to_print->right);
-    } else {
-        printf("LEAF!!\n");
-    }
+    print_tree(tree_to_print->left);
+    print_tree(tree_to_print->right);
 }
 
 void draw_people_tree(binary_tree_t *my_tree, sdl_data_t *win, int draw_node) {
@@ -499,8 +452,101 @@ void check_coll_tree(binary_tree_t *my_tree) {
     
 }
 
+void print_binary2(char*tar, int bin,int bin2) {
+    int temp = bin;
+    int temp1 = bin;
+    int temp2 = 0;
+    while(temp) {
+        temp2 |= temp & 1;
+        temp = temp >> 1;
+        temp2 = temp2 << 1;
+    }
+    temp2 = temp2 >> 1;
+    while(temp1) {
+        sprintf(tar,"%i", temp2 & 1);
+        tar++;
+        temp2 = temp2 >> 1;
+        temp1 = temp1 >> 1;
+    }
+    sprintf(tar,"\n");
+    tar++;
+    temp = bin2;
+    temp1 = bin2;
+    temp2 = 0;
+    while(temp) {
+        temp2 |= temp & 1;
+        temp = temp >> 1;
+        temp2 = temp2 << 1;
+    }
+    temp2 = temp2 >> 1;
+    while(temp1) {
+        sprintf(tar,"%i", temp2 & 1);
+        tar++;
+        temp2 = temp2 >> 1;
+        temp1 = temp1 >> 1;
+    }
+
+}
+
+char *strnode(char *name,  binary_tree_t*n)
+{
+    print_binary2(name,n->value_x,n->value_y);
+
+	
+    return name;
+}
+
+
+void _tree_print(plot_t *plot, binary_tree_t *current)
+{
+    char from[500];
+    char to[500];
+	
+    if (current == NULL)
+        return;
+
+    strnode(from, current);
+    if (current->left != NULL) {
+        plot_addlink2(plot, current, current->left, from, strnode(to, current->left));
+    } 
+	
+    if (current->right != NULL) {
+        plot_addlink2(plot, current, current->right, from, strnode(to, current->right));
+    } 
+    
+    _tree_print(plot, current->left);
+    _tree_print(plot, current->right);
+}
+
+void tree_visualize(binary_tree_t *parse)
+{
+    plot_t *plot;
+    
+    plot = plot_create("tree");
+    _tree_print(plot, parse);
+    plot_doplot(plot);
+	plot_cleanup(plot);
+}
+
 
 int main(int argc, char * argv[]) {
+    int c;
+    int visualize = 0;
+    if(argc >1){
+        while(( c = getopt(argc,argv,"ad")) !=- 1){
+            switch (c)
+            {
+            case 'd':
+                visualize = 1;
+                break;
+            case 'a':
+                search_animation = 1;
+            default:
+                break;
+            }
+        }
+    }
+
     win = init_sdl(800, 800);
     if(!win) {
         SDL_Log("Big error: %s", SDL_GetError());
@@ -520,13 +566,17 @@ int main(int argc, char * argv[]) {
     int generation = 0;
 
     binary_tree_t *my_tree = create_space_partition(NULL, 10, 0, WIDTH, 0, HEIGHT, 0, 0);
-    //print_tree(my_tree);
+    // print_tree(my_tree); 
+    
+    if(visualize)
+        tree_visualize(my_tree);
     put_people_in_tree(my_tree, my_list);
 
     clock_t start = clock();
     clock_t diff;
 
     int type = 1;
+
 
     while(1) {
         SDL_SetRenderDrawColor(win->renderer, 0, 0, 0, 25);
