@@ -45,13 +45,11 @@ int interleave_choices(int x, int y, int choice);
 Binary tree structure:
 Alternating X and Y values
 Value is central point on this depth's axis
-**  As of 29.01.2022 there is a bug when selecting  x>= y, giving opposite
-    encoding on each half of the tree. EdvardP  assigned.
 */
 
 sdl_data_t *win;
 
-binary_tree_t *create_space_partition(binary_tree_t *parent, int depth, int x1, int x2, int y1, int y2, int val_x, int val_y) {
+binary_tree_t *create_space_partition(binary_tree_t *parent, int depth, int x1, int x2, int y1, int y2, int val_x, int val_y, int dir) {
     binary_tree_t *node = malloc(sizeof(binary_tree_t));
     node->left = NULL;
     node->right = NULL;
@@ -76,14 +74,14 @@ binary_tree_t *create_space_partition(binary_tree_t *parent, int depth, int x1, 
         return node;
     }
 
-    if(node->value_x >= node->value_y) {
+    if(dir == 1) {
         int central = (y2 + y1) / 2;
-        node->left = create_space_partition(node, depth - 1, x1, x2, y1, central, node->value_x, node->value_y << 1);
-        node->right = create_space_partition(node, depth - 1, x1, x2, central, y2, node->value_x, (node->value_y << 1) | 1);
+        node->left = create_space_partition(node, depth - 1, x1, x2, y1, central, node->value_x, node->value_y << 1, 0);
+        node->right = create_space_partition(node, depth - 1, x1, x2, central, y2, node->value_x, (node->value_y << 1) | 1, 0);
     } else {
         int central = (x2 + x1) / 2;
-        node->left = create_space_partition(node, depth - 1, x1, central, y1, y2, node->value_x << 1, node->value_y);
-        node->right = create_space_partition(node, depth - 1, central, x2, y1, y2, (node->value_x << 1) | 1, node->value_y);
+        node->left = create_space_partition(node, depth - 1, x1, central, y1, y2, node->value_x << 1, node->value_y, 1);
+        node->right = create_space_partition(node, depth - 1, central, x2, y1, y2, (node->value_x << 1) | 1, node->value_y, 1);
     }
     return node;
 }
@@ -565,7 +563,7 @@ int main(int argc, char * argv[]) {
 
     int generation = 0;
 
-    binary_tree_t *my_tree = create_space_partition(NULL, 10, 0, WIDTH, 0, HEIGHT, 0, 0);
+    binary_tree_t *my_tree = create_space_partition(NULL, 6, 0, WIDTH, 0, HEIGHT, 0, 0, 0);
     // print_tree(my_tree); 
     
     if(visualize)
