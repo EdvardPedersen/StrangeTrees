@@ -193,9 +193,15 @@ binary_tree_t *find_directional_node(binary_tree_t *my_root, int x, int y, enum 
     }
 
     int combined_choices = 0;
+    binary_tree_t *node = NULL;
 
-    binary_tree_t *node = find_node(interleave_choices(reversed_choices,reverse_bits(y),1),upper_root);
-    return find_node(interleave_choices(reversed_choices, reverse_bits(y), 1), upper_root);
+    if(direction == LEFT || direction == RIGHT) {
+        node = find_node(interleave_choices(reversed_choices,reverse_bits(y),0),upper_root);
+    } else if (direction == UP || direction == DOWN) {
+        node = find_node(interleave_choices(reverse_bits(x),reversed_choices,0),upper_root);
+    }
+
+    return node;
 }
 
 int reverse_bits(int target) {
@@ -209,13 +215,15 @@ int reverse_bits(int target) {
 }
 
 int interleave_choices(int x, int y, int choice) {
+    int result = 1;
     if(choice == 0 && !((x >> 1 < 1) && (y >> 1 < 1))) {
-        return (interleave_choices(x >> 1, y, 1) << 1) | (x & 1);
+        result = (interleave_choices(x >> 1, y, 1) << 1) | (x & 1);
     } else if (!((x >> 1 < 1) && (y >> 1 < 1))) {
-        return (interleave_choices(x, y >> 1, 0) << 1) | (y & 1);
+        result = (interleave_choices(x, y >> 1, 0) << 1) | (y & 1);
     } else if ((x >> 1 < 1) && (y >> 1 < 1)) {
-        return 1;
+        result = 1;
     }
+    return result;
 }
 
 binary_tree_t *find_node(int choices, binary_tree_t *my_root) {
@@ -247,8 +255,8 @@ binary_tree_t *find_node(int choices, binary_tree_t *my_root) {
 
 person_t *create_person() {
     person_t *new_person = malloc(sizeof(person_t));
-    new_person->x = 10;
-    new_person->y = 500;
+    new_person->x = rand() % WIDTH;
+    new_person->y = rand() % HEIGHT;
     new_person->speed_x = ((rand() % 10) - 5) / 10.0;
     new_person->speed_y = ((rand() % 10) - 5) / 10.0;
     new_person->infected = 0;
@@ -556,7 +564,7 @@ int main(int argc, char * argv[]) {
     my_list->next = NULL;
     my_list->value = create_person();
 
-    for(int i = 0; i < 0; i++) {
+    for(int i = 0; i < 10000; i++) {
         person_t *new_person = create_person();
         my_list = add_person(new_person, my_list);
     }
@@ -585,7 +593,7 @@ int main(int argc, char * argv[]) {
             check_coll(my_list);
         } else {
             move_nodes(my_tree);
-            draw_people_tree(my_tree, win, 1);
+            draw_people_tree(my_tree, win, 0);
             update_people_position_list(my_list);
             check_coll_tree(my_tree);
         }   
@@ -598,7 +606,8 @@ int main(int argc, char * argv[]) {
         if(generation % 1 == 0) {
             diff = clock() - start;
             float seconds = (float)diff / CLOCKS_PER_SEC;
-            //printf("Generation %i complete in %f seconds\n", generation, seconds);
+            float fps = 1 / seconds;
+            printf("Generation %i complete in %f seconds (%f FPS)\n", generation, seconds, fps);
             start = clock();
         }
     }

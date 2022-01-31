@@ -1,6 +1,6 @@
 
 main: main.c plot.c
-	gcc -g main.c plot.c -o main plot.h -lSDL2 -lm 
+	gcc -O3 main.c plot.c -o main plot.h -lSDL2 -lm 
 
 run: main
 	sudo ./main
