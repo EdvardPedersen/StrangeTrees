@@ -564,14 +564,14 @@ int main(int argc, char * argv[]) {
     my_list->next = NULL;
     my_list->value = create_person();
 
-    for(int i = 0; i < 10000; i++) {
+    for(int i = 0; i < 50000; i++) {
         person_t *new_person = create_person();
         my_list = add_person(new_person, my_list);
     }
 
     int generation = 0;
 
-    binary_tree_t *my_tree = create_space_partition(NULL, 6, 0, WIDTH, 0, HEIGHT, 0, 0, 0);
+    binary_tree_t *my_tree = create_space_partition(NULL, 10, 0, WIDTH, 0, HEIGHT, 0, 0, 0);
     // print_tree(my_tree); 
     
     if(visualize)
@@ -581,7 +581,7 @@ int main(int argc, char * argv[]) {
     clock_t start = clock();
     clock_t diff;
 
-    int type = 1;
+    int type = 0;
 
 
     while(1) {
