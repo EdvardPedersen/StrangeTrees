@@ -229,9 +229,9 @@ int interleave_choices(int x, int y, int choice) {
 binary_tree_t *find_node(int choices, binary_tree_t *my_root) {
     
     if(search_animation){
-        SDL_SetRenderDrawColor(win->renderer, 0, 0, 0, 25);
+        SDL_SetRenderDrawColor(win->renderer, 0, 0, 0, 255);
         SDL_RenderFillRect(win->renderer, NULL);
-        SDL_SetRenderDrawColor(win->renderer, 0xff, 0xff, 0xff, 0x10);
+        SDL_SetRenderDrawColor(win->renderer, 0xff, 0xff, 0xff, 0xff);
         SDL_Rect draw_rect;
         draw_rect.x = my_root->x;
         draw_rect.y = my_root->y;
@@ -585,7 +585,11 @@ int main(int argc, char * argv[]) {
 
 
     while(1) {
-        SDL_SetRenderDrawColor(win->renderer, 0, 0, 0, 25);
+        if(search_animation) {
+            SDL_SetRenderDrawColor(win->renderer, 0, 0, 0, 25);
+        } else {
+            SDL_SetRenderDrawColor(win->renderer, 0, 0, 0, 25);
+        }
         SDL_RenderFillRect(win->renderer, NULL);
         if(type == 0) {
             draw_people_list(my_list, win);
@@ -602,7 +606,7 @@ int main(int argc, char * argv[]) {
             type = !type;
         }
         generation++;
-        SDL_Delay(10);
+        //SDL_Delay(10);
         if(generation % 1 == 0) {
             diff = clock() - start;
             float seconds = (float)diff / CLOCKS_PER_SEC;
