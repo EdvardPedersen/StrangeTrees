@@ -49,6 +49,16 @@ Value is central point on this depth's axis
 
 sdl_data_t *win;
 
+/*
+Create a space partitioning binary tree recursively
+parent - the parent node, NULL when generating the full tree
+depth - the depth of the tree
+x1, x2, y1, y2 - the coordinates of the spanning area
+val_x, val_y - coordinates of the node in x and y direction (binary encoded)
+dir - direction (x or y)
+
+returns the created binary tree
+*/
 binary_tree_t *create_space_partition(binary_tree_t *parent, int depth, int x1, int x2, int y1, int y2, int val_x, int val_y, int dir) {
     binary_tree_t *node = malloc(sizeof(binary_tree_t));
     node->left = NULL;
@@ -87,6 +97,11 @@ binary_tree_t *create_space_partition(binary_tree_t *parent, int depth, int x1, 
 }
 
 
+/*
+move_nodes - move persons through the tree based on coordinates
+my_root - the tree to update
+returns nothing
+*/
 void move_nodes(binary_tree_t *my_root) {
     if(my_root == NULL)
         return;
@@ -117,6 +132,12 @@ void move_nodes(binary_tree_t *my_root) {
     }
 }
 
+/*
+put_person_in_tree - add a person to the appropriate posisiton in the tree
+tree - the tree to add the person to
+person - the person to add to the tree
+returns 1 on success
+*/
 int put_person_in_tree(binary_tree_t *tree, person_t *person) {
     binary_tree_t *current_node = tree;
     while(current_node->left) {
@@ -138,14 +159,31 @@ int put_person_in_tree(binary_tree_t *tree, person_t *person) {
     return 1;
 }
 
+/*
+put_people_in_tree - add all people from a list to the tree
+tree - the tree to add people to
+people - a list of people to add
+returns 1 on success
+*/
 int put_people_in_tree(binary_tree_t *tree, list_node_t *people) {
     list_node_t *current = people;
     while(current) {
         put_person_in_tree(tree, current->value);
         current = current->next;
     }
+    return 1;
 }
 
+
+/*
+find_directional_node - find a neighbour node in a given direction
+my_root - the tree to find
+x, y - the (tree coordinates) of the node
+direction - the direction to move
+returns the neighbouring node
+
+WARNING: lots of black magic in this function
+*/
 binary_tree_t *find_directional_node(binary_tree_t *my_root, int x, int y, enum MOVE direction) {
     int choices = 0;
     int invert = 100;
@@ -204,6 +242,12 @@ binary_tree_t *find_directional_node(binary_tree_t *my_root, int x, int y, enum 
     return node;
 }
 
+
+/*
+reverse_bits - reverses the order of bits in the target
+target - the bits to reverse
+returns the reversed bits
+*/
 int reverse_bits(int target) {
     int ret = 1;
     while(target > 1) {
@@ -214,6 +258,13 @@ int reverse_bits(int target) {
     return ret;
 }
 
+
+/*
+interleave_choices - interleave the bits of x and y choices to create a coordinate
+x, y - choices in x and y directions
+choice - which direction to start with
+returnes the combined choices
+*/
 int interleave_choices(int x, int y, int choice) {
     int result = 1;
     if(choice == 0 && !((x >> 1 < 1) && (y >> 1 < 1))) {
@@ -226,6 +277,15 @@ int interleave_choices(int x, int y, int choice) {
     return result;
 }
 
+
+/*
+find_node - find the node at the given coordinates
+choices - the coordinates of the node
+my_root - the tree to search
+returns the node at the given coordinates
+
+NOTE: Also includes a visualization of the search
+*/
 binary_tree_t *find_node(int choices, binary_tree_t *my_root) {
     
     if(search_animation){
@@ -240,6 +300,7 @@ binary_tree_t *find_node(int choices, binary_tree_t *my_root) {
         SDL_RenderDrawRect(win->renderer, &draw_rect);
         SDL_RenderPresent(win->renderer);
         SDL_Delay(200);
+        check_events();
     }
     if(choices <= 1) {
         return my_root;
@@ -253,6 +314,10 @@ binary_tree_t *find_node(int choices, binary_tree_t *my_root) {
     }
 }
 
+/*
+create_person - create a new person
+returns the created person
+*/
 person_t *create_person() {
     person_t *new_person = malloc(sizeof(person_t));
     new_person->x = rand() % WIDTH;
@@ -263,6 +328,13 @@ person_t *create_person() {
     return new_person;
 }
 
+
+/*
+add_person - adds person to the person list
+person - the person to add
+list - the list to add the person to
+returns the list node which is the new head of the list
+*/
 list_node_t *add_person(person_t *person, list_node_t *list) {
     list_node_t *new_entry = malloc(sizeof(list_node_t));
     new_entry->next = list;
@@ -270,6 +342,13 @@ list_node_t *add_person(person_t *person, list_node_t *list) {
     return new_entry;
 }
 
+
+/*
+remove_person - removes person from the list
+person - the person to remove
+list - the list to remove the person from
+returns the head of the list
+*/
 list_node_t *remove_person(person_t *person, list_node_t *list) {
     //printf("REMOVE PERSON %x from %x\n", person, list);
     list_node_t *head = list;
@@ -290,6 +369,12 @@ list_node_t *remove_person(person_t *person, list_node_t *list) {
     }
 }
 
+/*
+draw_people_list - draw all people in a list to the window
+list - the list containing people
+win - the window to draw to
+returns 1 on success, 0 on failure
+*/
 int draw_people_list(list_node_t *list, sdl_data_t *win) {
     if(list == NULL)
         return 0;
@@ -305,12 +390,23 @@ int draw_people_list(list_node_t *list, sdl_data_t *win) {
     return 1;
 }
 
+
+/*
+distance - calculate the distance between two people
+p1, p2 - the two people to calculate the distance between
+returns the euclidian distance between the two persons
+*/
 float distance(person_t *p1, person_t *p2) {
     float dx = p1->x - p2->x;
     float dy = p1->y - p2->y;
     return sqrtf(dx*dx + dy*dy);
 }
 
+/*
+update_people_position_list - update the position of all people in list
+list - the list of people to update
+returns 1 on success
+*/
 int update_people_position_list(list_node_t *list) {
     list_node_t *it = list;
     while(it) {
@@ -331,6 +427,13 @@ int update_people_position_list(list_node_t *list) {
     return 1;
 }
 
+
+/*
+check_coll - check for collision between nodes
+list - list of persons to check
+returns number of checks performed
+NOTE: increases the value of "infected" for each person in proximity
+*/
 int check_coll(list_node_t *list) {
     int count = 0;
     list_node_t *it = list;
@@ -339,7 +442,7 @@ int check_coll(list_node_t *list) {
         list_node_t *other_it = it->next;
         while(other_it) {
             float dist = distance(it->value, other_it->value);
-            if(dist < 2) {
+            if(dist < 1.5) {
                 if (it->value->infected < 255)
                     it->value->infected++;
                 if (other_it->value->infected < 255)
@@ -350,8 +453,15 @@ int check_coll(list_node_t *list) {
        it = it->next;
     }
     //printf("Checked coll for %i elements\n", count);
+    return count;
 }
 
+
+/*
+init_sdl - initialize SDL and window
+width, height - the dimensions of the window to create
+returns the sdl_data_t structure
+*/
 sdl_data_t *init_sdl(int width, int height) {
     sdl_data_t *ret = malloc(sizeof(sdl_data_t));
     if (SDL_Init(SDL_INIT_VIDEO) < 0)
@@ -377,6 +487,11 @@ sdl_data_t *init_sdl(int width, int height) {
     return ret;
 }
 
+
+/*
+check_events - check for events
+returns 1 if a key is pressed, 0 otherwise
+*/
 int check_events() {
     SDL_Event event;
 
@@ -394,6 +509,12 @@ int check_events() {
     return 0;
 }
 
+
+/*
+print_binary - print the binary representation of an int
+returns nothing
+NOTE: Does not print a newline
+*/
 void print_binary(int bin) {
     int temp = bin;
     int temp1 = bin;
@@ -411,6 +532,11 @@ void print_binary(int bin) {
     }
 }
 
+/*
+print_tree - print a textual representation of the tree
+tree_to_print - the tree to print
+returns nothing
+*/
 void print_tree(binary_tree_t *tree_to_print) {
     if(!tree_to_print){
         printf("LEAF!!\n");
@@ -426,6 +552,14 @@ void print_tree(binary_tree_t *tree_to_print) {
     print_tree(tree_to_print->right);
 }
 
+
+/*
+draw_people_list - draw all people in a list to the window
+my_tree - the list containing people
+win - the window to draw to
+draw_node - if 1, draw the node containing the person
+returns nothing
+*/
 void draw_people_tree(binary_tree_t *my_tree, sdl_data_t *win, int draw_node) {
     binary_tree_t *node = my_tree;
     if(node->left) {
@@ -446,6 +580,12 @@ void draw_people_tree(binary_tree_t *my_tree, sdl_data_t *win, int draw_node) {
     }
 }
 
+
+/*
+check_coll_tree - check collision between people in tree recursively
+my_tree - the tree containing people
+returns nothing
+*/
 void check_coll_tree(binary_tree_t *my_tree) {
     binary_tree_t *node = my_tree;
     if(node->left) {
@@ -458,6 +598,13 @@ void check_coll_tree(binary_tree_t *my_tree) {
     
 }
 
+
+/*
+print_binary2 - print node info to char array
+tar - array to print to
+bin - first coordinate
+bin2 - second coordinate
+*/
 void print_binary2(char*tar, int bin,int bin2) {
     int temp = bin;
     int temp1 = bin;
@@ -494,6 +641,12 @@ void print_binary2(char*tar, int bin,int bin2) {
 
 }
 
+/*
+strnode - get node info for one node
+name - the char array to update
+n - the binary tree node to get info for
+returns node info
+*/
 char *strnode(char *name,  binary_tree_t*n)
 {
     print_binary2(name,n->value_x,n->value_y);
@@ -502,7 +655,9 @@ char *strnode(char *name,  binary_tree_t*n)
     return name;
 }
 
-
+/*
+Internal function for plotting the binary tree
+*/
 void _tree_print(plot_t *plot, binary_tree_t *current)
 {
     char from[500];
@@ -524,6 +679,10 @@ void _tree_print(plot_t *plot, binary_tree_t *current)
     _tree_print(plot, current->right);
 }
 
+/*
+tree_visualize - generate visualization of the binary tree
+parse - the tree to parse for the visualization
+*/
 void tree_visualize(binary_tree_t *parse)
 {
     plot_t *plot;
